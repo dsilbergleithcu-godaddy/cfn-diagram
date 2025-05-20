@@ -1,5 +1,5 @@
 const clc = require("cli-color");
-const parser = require("fast-xml-parser");
+const { XMLParser } = require("fast-xml-parser");
 const colorConvert = require("color-convert");
 const yScale = 12;
 const xScale = 7;
@@ -13,10 +13,11 @@ const serviceColors = {
 
 let highestY = 0;
 function render(xml) {
-  const doc = parser.parse(xml, {
+  const parser = new XMLParser({
     ignoreAttributes: false,
     attributeNamePrefix: "",
   });
+  const doc = parser.parse(xml);
 
   console.clear();
   const mxGraphModel = doc.mxGraphModel || doc.mxfile.diagram.mxGraphModel;
