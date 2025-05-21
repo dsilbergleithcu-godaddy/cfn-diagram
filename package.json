@@ -1,7 +1,7 @@
 {
   "name": "@mhlabs/cfn-diagram",
-  "version": "1.1.40",
-  "description": "CLI tool to visualise CloudFormation, SAM or CDK stacks as draw.io, visjs networks, ascii-art or mermaid",
+  "version": "1.1.40-cimode.1",
+  "description": "CLI tool to visualise CloudFormation, SAM or CDK stacks as draw.io, visjs networks, ascii-art or mermaid (fork with CI mode)",
   "main": "index.js",
   "scripts": {
     "test": "jest"
@@ -46,10 +46,10 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/ljacobsson/cfn-diagram.git"
+    "url": "git+https://github.com/dsilbergleithcu-godaddy/cfn-diagram.git"
   },
   "bugs": {
-    "url": "https://github.com/ljacobsson/cfn-diagram/issues"
+    "url": "https://github.com/dsilbergleithcu-godaddy/cfn-diagram/issues"
   },
-  "homepage": "https://github.com/ljacobsson/cfn-diagram#readme"
+  "homepage": "https://github.com/dsilbergleithcu-godaddy/cfn-diagram#readme"
 }
