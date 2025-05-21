@@ -35,6 +35,11 @@ describe('ASCII Art Side-by-Side Rendering', () => {
       args.push('--spacing', options.spacing.toString());
     }
     
+    // Add custom title if specified
+    if (options.title) {
+      args.push('--title', options.title);
+    }
+    
     // Run the command
     return spawnSync('node', args, {
       encoding: 'utf-8',
@@ -152,5 +157,118 @@ describe('ASCII Art Side-by-Side Rendering', () => {
     const formattedOutput = `\n${plainText}`;
     
     expect(formattedOutput).toMatchSnapshot('Templates with different sizes');
+  });
+  
+  test('should render side-by-side with custom outer title', () => {
+    const customTitle = "CloudFormation Stack Comparison";
+    const result = runSideBySide(
+      ['simple-template.yaml', 'complex-template.yaml'], 
+      { border: true, title: customTitle }
+    );
+    
+    // Check successful execution
+    expect(result.status).toBe(0);
+    
+    // Get plain text output
+    const plainText = stripAnsiCodes(result.stdout);
+    
+    // Check for custom title and stack names
+    expect(plainText).toContain(customTitle);
+    expect(plainText).toContain('Stack: simple-template');
+    expect(plainText).toContain('Stack: complex-template');
+    
+    // Check for nested border characters
+    expect(plainText).toContain('╭');
+    expect(plainText).toContain('╮');
+    expect(plainText).toContain('╯');
+    expect(plainText).toContain('╰');
+    
+    // Create a snapshot
+    // Ensure consistent snapshot format with a leading newline
+    const formattedOutput = `\n${plainText}`;
+    
+    expect(formattedOutput).toMatchSnapshot('Two templates side-by-side with custom title');
+  });
+  
+  test('should render side-by-side with custom title without individual borders', () => {
+    const customTitle = "Unbounded Stack Comparison";
+    const result = runSideBySide(
+      ['simple-template.yaml', 'complex-template.yaml'], 
+      { title: customTitle }
+    );
+    
+    // Check successful execution
+    expect(result.status).toBe(0);
+    
+    // Get plain text output
+    const plainText = stripAnsiCodes(result.stdout);
+    
+    // Check for custom title
+    expect(plainText).toContain(customTitle);
+    
+    // Check for border characters
+    expect(plainText).toContain('╭');
+    expect(plainText).toContain('╮');
+    expect(plainText).toContain('╯');
+    expect(plainText).toContain('╰');
+    
+    // Create a snapshot
+    const formattedOutput = `\n${plainText}`;
+    
+    expect(formattedOutput).toMatchSnapshot('Two templates with only outer border and custom title');
+  });
+  
+  test('should render side-by-side with reversed template order (large stack first)', () => {
+    const customTitle = "Reversed Order Comparison";
+    const result = runSideBySide(
+      ['complex-template.yaml', 'simple-template.yaml'], 
+      { border: true, title: customTitle }
+    );
+    
+    // Check successful execution
+    expect(result.status).toBe(0);
+    
+    // Get plain text output
+    const plainText = stripAnsiCodes(result.stdout);
+    
+    // Check for custom title and stack names in the correct order
+    expect(plainText).toContain(customTitle);
+    expect(plainText).toContain('Stack: complex-template');
+    expect(plainText).toContain('Stack: simple-template');
+    
+    // Check for border characters
+    expect(plainText).toContain('╭');
+    expect(plainText).toContain('╮');
+    expect(plainText).toContain('╯');
+    expect(plainText).toContain('╰');
+    
+    // Create a snapshot
+    const formattedOutput = `\n${plainText}`;
+    
+    expect(formattedOutput).toMatchSnapshot('Large stack first, small stack second with custom title');
+  });
+  
+  test('should render side-by-side with very different sizes in reversed order', () => {
+    const customTitle = "Extreme Size Difference (Reversed)";
+    const result = runSideBySide(
+      ['very-long-stack-name-template-that-will-overflow-border.yaml', 'simple-template.yaml'],
+      { border: true, title: customTitle }
+    );
+    
+    // Check successful execution
+    expect(result.status).toBe(0);
+    
+    // Get plain text output
+    const plainText = stripAnsiCodes(result.stdout);
+    
+    // Check for custom title and content from both templates
+    expect(plainText).toContain(customTitle);
+    expect(plainText).toContain('LambdaRole');  // From first template
+    expect(plainText).toContain('LambdaExecutionRole');  // From second template
+    
+    // Create a snapshot
+    const formattedOutput = `\n${plainText}`;
+    
+    expect(formattedOutput).toMatchSnapshot('Templates with different sizes in reversed order');
   });
 });

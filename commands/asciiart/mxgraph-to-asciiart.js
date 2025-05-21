@@ -514,8 +514,105 @@ function combineBuffersSideBySide(buffers, spacing = 4) {
   return combinedBuffer;
 }
 
+/**
+ * Adds an outer border with a title around a buffer
+ * @param {AsciiBuffer} buffer - The buffer to add a border around
+ * @param {string} title - The title to display in the border
+ * @returns {AsciiBuffer} A new buffer with the border added
+ */
+function addOuterBorder(buffer, title) {
+  // Find the actual max content width and height
+  const maxWidth = buffer.maxX;
+  const maxHeight = buffer.buffer.length;
+  
+  // Calculate border dimensions with padding
+  const borderWidth = maxWidth + 4;
+  const titleWidth = title.length + 4;
+  const finalWidth = Math.max(borderWidth, titleWidth);
+  
+  // Create a new buffer with extra space for border
+  const borderedBuffer = new AsciiBuffer();
+  
+  // Draw top border
+  borderedBuffer.write(0, 0, '╭');
+  for (let x = 1; x < finalWidth - 1; x++) {
+    borderedBuffer.write(x, 0, '─');
+  }
+  borderedBuffer.write(finalWidth - 1, 0, '╮');
+  
+  // Draw title row
+  borderedBuffer.write(0, 1, '│');
+  borderedBuffer.write(finalWidth - 1, 1, '│');
+  
+  // Add title if provided - centered
+  if (title) {
+    const padding = Math.floor((finalWidth - 2 - title.length) / 2);
+    
+    // Add spaces before title
+    for (let x = 0; x < padding; x++) {
+      borderedBuffer.write(1 + x, 1, ' ');
+    }
+    
+    // Add title text
+    for (let x = 0; x < title.length; x++) {
+      borderedBuffer.write(1 + padding + x, 1, title.charAt(x));
+    }
+    
+    // Add spaces after title
+    for (let x = 0; x < finalWidth - 2 - padding - title.length; x++) {
+      borderedBuffer.write(1 + padding + title.length + x, 1, ' ');
+    }
+  } else {
+    // No title, just spaces
+    for (let x = 0; x < finalWidth - 2; x++) {
+      borderedBuffer.write(1 + x, 1, ' ');
+    }
+  }
+  
+  // Draw separator line
+  borderedBuffer.write(0, 2, '├');
+  for (let x = 1; x < finalWidth - 1; x++) {
+    borderedBuffer.write(x, 2, '─');
+  }
+  borderedBuffer.write(finalWidth - 1, 2, '┤');
+  
+  // Copy original content with padding
+  const contentOffset = 3;
+  for (let y = 0; y < maxHeight; y++) {
+    // Draw left border
+    borderedBuffer.write(0, y + contentOffset, '│');
+    
+    // Copy content from original buffer
+    if (y < buffer.buffer.length) {
+      for (let x = 0; x < buffer.buffer[y].length; x++) {
+        if (buffer.buffer[y][x]) {
+          borderedBuffer.write(
+            2 + x, 
+            y + contentOffset, 
+            buffer.buffer[y][x],
+            buffer.colors[y] ? buffer.colors[y][x] : null
+          );
+        }
+      }
+    }
+    
+    // Draw right border
+    borderedBuffer.write(finalWidth - 1, y + contentOffset, '│');
+  }
+  
+  // Draw bottom border
+  borderedBuffer.write(0, maxHeight + contentOffset, '╰');
+  for (let x = 1; x < finalWidth - 1; x++) {
+    borderedBuffer.write(x, maxHeight + contentOffset, '─');
+  }
+  borderedBuffer.write(finalWidth - 1, maxHeight + contentOffset, '╯');
+  
+  return borderedBuffer;
+}
+
 module.exports = {
   render,
   combineBuffersSideBySide,
-  AsciiBuffer
+  AsciiBuffer,
+  addOuterBorder
 };

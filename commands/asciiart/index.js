@@ -47,6 +47,11 @@ program
     "Add a border with stack name around the diagram",
     false
   )
+  .option(
+    "--title [title]",
+    "Custom title for the outer border when rendering multiple diagrams",
+    ""
+  )
   .description("Generates an ascii-art diagram from a CloudFormation template")
   .action(async (cmd) => {
     await render(cmd);
@@ -144,89 +149,75 @@ async function render(cmd) {
       }
       
       if (cmd.border) {
-        // Extract buffers for each diagram
-        const buffers = diagrams.map(d => d.buffer);
+        // Create individually bordered buffers
+        const borderedBuffers = [];
         
-        // Combine the raw buffers side-by-side first
-        const combinedBuffer = mxGraphToAsciiArt.combineBuffersSideBySide(buffers, spacing);
-        
-        // Now we'll manually create a new buffer with proper borders
-        const borderedBuffer = new mxGraphToAsciiArt.AsciiBuffer();
-        
-        // Calculate the exact width of each diagram
-        let currentPosition = 0;
-        const diagramWidths = [];
-        
-        for (const buffer of buffers) {
+        for (let i = 0; i < diagrams.length; i++) {
+          const buffer = diagrams[i].buffer;
+          const stackName = diagrams[i].stackName;
+          
           // Get maximum content width
-          let maxWidth = 0;
+          let contentWidth = 0;
           for (let y = 0; y < buffer.buffer.length; y++) {
             for (let x = buffer.buffer[y].length - 1; x >= 0; x--) {
               if (buffer.buffer[y][x] && buffer.buffer[y][x] !== ' ') {
-                maxWidth = Math.max(maxWidth, x + 1);
+                contentWidth = Math.max(contentWidth, x + 1);
                 break;
               }
             }
           }
-          diagramWidths.push(maxWidth);
-        }
-        
-        // Now draw the borders and content
-        currentPosition = 0;
-        
-        for (let i = 0; i < diagrams.length; i++) {
-          const buffer = buffers[i];
-          const stackName = diagrams[i].stackName;
-          const contentWidth = diagramWidths[i];
           
-          // Calculate border width based on content and title
+          // Create a new buffer with a border
+          const borderedBuffer = new mxGraphToAsciiArt.AsciiBuffer();
+          
+          // Calculate border width based on content and stack name
           const title = stackName ? "Stack: " + stackName : "";
           const titleWidth = title.length + 4; // Add some padding
           const borderWidth = Math.max(contentWidth + 4, titleWidth);
           
-          // Draw top border with precise character placement
-          borderedBuffer.write(currentPosition, 0, '╭');
+          // Draw top border
+          borderedBuffer.write(0, 0, '╭');
           for (let x = 1; x < borderWidth - 1; x++) {
-            borderedBuffer.write(currentPosition + x, 0, '─');
+            borderedBuffer.write(x, 0, '─');
           }
-          borderedBuffer.write(currentPosition + borderWidth - 1, 0, '╮');
+          borderedBuffer.write(borderWidth - 1, 0, '╮');
           
-          // Draw title row (vertical borders with title text)
-          borderedBuffer.write(currentPosition, 1, '│');
-          borderedBuffer.write(currentPosition + borderWidth - 1, 1, '│');
+          // Draw title row
+          borderedBuffer.write(0, 1, '│');
+          borderedBuffer.write(borderWidth - 1, 1, '│');
           
-          // Add title if available - with precise character placement
+          // Add stack name as title
           if (stackName) {
             // Calculate padding for centering
             const padding = Math.floor((borderWidth - 2 - title.length) / 2);
             
             // Add spaces before title
             for (let x = 0; x < padding; x++) {
-              borderedBuffer.write(currentPosition + 1 + x, 1, ' ');
+              borderedBuffer.write(1 + x, 1, ' ');
             }
             
             // Add title text
             for (let x = 0; x < title.length; x++) {
-              borderedBuffer.write(currentPosition + 1 + padding + x, 1, title.charAt(x));
+              borderedBuffer.write(1 + padding + x, 1, title.charAt(x));
             }
             
             // Add spaces after title
             for (let x = 0; x < borderWidth - 2 - padding - title.length; x++) {
-              borderedBuffer.write(currentPosition + 1 + padding + title.length + x, 1, ' ');
+              borderedBuffer.write(1 + padding + title.length + x, 1, ' ');
             }
           } else {
             // No title, just spaces
             for (let x = 0; x < borderWidth - 2; x++) {
-              borderedBuffer.write(currentPosition + 1 + x, 1, ' ');
+              borderedBuffer.write(1 + x, 1, ' ');
             }
           }
           
-          // Draw separator line with precise character placement
-          borderedBuffer.write(currentPosition, 2, '├');
+          // Draw separator line
+          borderedBuffer.write(0, 2, '├');
           for (let x = 1; x < borderWidth - 1; x++) {
-            borderedBuffer.write(currentPosition + x, 2, '─');
+            borderedBuffer.write(x, 2, '─');
           }
-          borderedBuffer.write(currentPosition + borderWidth - 1, 2, '┤');
+          borderedBuffer.write(borderWidth - 1, 2, '┤');
           
           // Draw content with vertical borders
           const contentOffset = 3; // 3 rows for top border + title + separator
@@ -236,13 +227,13 @@ async function render(cmd) {
           // Copy content from the original buffer with centering
           for (let y = 0; y < buffer.buffer.length; y++) {
             // Draw left border
-            borderedBuffer.write(currentPosition, y + contentOffset, '│');
+            borderedBuffer.write(0, y + contentOffset, '│');
             
             // Draw content with centering
             for (let x = 0; x < buffer.buffer[y].length; x++) {
               if (buffer.buffer[y][x]) {
                 borderedBuffer.write(
-                  currentPosition + 2 + centeringOffset + x, 
+                  2 + centeringOffset + x, 
                   y + contentOffset, 
                   buffer.buffer[y][x],
                   buffer.colors[y] ? buffer.colors[y][x] : null
@@ -251,28 +242,45 @@ async function render(cmd) {
             }
             
             // Draw right border
-            borderedBuffer.write(currentPosition + borderWidth - 1, y + contentOffset, '│');
+            borderedBuffer.write(borderWidth - 1, y + contentOffset, '│');
           }
           
-          // Draw bottom border with precise character placement
+          // Draw bottom border
           const bottomY = buffer.buffer.length + contentOffset;
-          borderedBuffer.write(currentPosition, bottomY, '╰');
+          borderedBuffer.write(0, bottomY, '╰');
           for (let x = 1; x < borderWidth - 1; x++) {
-            borderedBuffer.write(currentPosition + x, bottomY, '─');
+            borderedBuffer.write(x, bottomY, '─');
           }
-          borderedBuffer.write(currentPosition + borderWidth - 1, bottomY, '╯');
+          borderedBuffer.write(borderWidth - 1, bottomY, '╯');
           
-          // Move to next diagram position
-          currentPosition += borderWidth + spacing;
+          // Add to list of bordered buffers
+          borderedBuffers.push(borderedBuffer);
         }
         
-        // Output the bordered buffer
-        process.stdout.write(borderedBuffer.toString());
+        // Combine the bordered buffers side-by-side
+        const combinedBuffer = mxGraphToAsciiArt.combineBuffersSideBySide(borderedBuffers, spacing);
+        
+        // If a custom title was provided, add an outer border with that title
+        if (cmd.title) {
+          const outerBorderedBuffer = mxGraphToAsciiArt.addOuterBorder(combinedBuffer, cmd.title);
+          process.stdout.write(outerBorderedBuffer.toString());
+        } else {
+          // Output the combined buffer without outer border
+          process.stdout.write(combinedBuffer.toString());
+        }
       } else {
         // For non-border mode, just combine the raw buffers and output
         const buffers = diagrams.map(d => d.buffer);
         const combinedBuffer = mxGraphToAsciiArt.combineBuffersSideBySide(buffers, spacing);
-        process.stdout.write(combinedBuffer.toString());
+        
+        // If a custom title was provided, add an outer border with that title
+        if (cmd.title) {
+          const outerBorderedBuffer = mxGraphToAsciiArt.addOuterBorder(combinedBuffer, cmd.title);
+          process.stdout.write(outerBorderedBuffer.toString());
+        } else {
+          // Output the combined buffer without outer border
+          process.stdout.write(combinedBuffer.toString());
+        }
       }
       
       return;
