@@ -121,6 +121,7 @@ Options:
   -w, --watch                            Watch for changes in template and rerender diagram on change (default: false)
   -e, --exclude-types [excludeTypes...]  List of resource types to exclude when using CI mode
   --ci                                  Generate ASCII art for CI environments (no cursor control, full output at once)
+  --border                              Add a border with stack name around the diagram
   -h, --help                             display help for command
 ```
 
@@ -139,6 +140,14 @@ The CI mode produces the entire diagram at once without using terminal cursor co
 - Redirecting output to files
 - Terminals that don't support ANSI cursor movement
 - Generating predictable output for automated testing
+
+You can also add a border with the stack name using the `--border` flag (requires CI mode):
+
+```
+cfn-dia ascii-art -t template.yaml --ci --border
+```
+
+This creates a box around your diagram with the stack name at the top, making it clear which stack the diagram represents, especially when displaying multiple stack diagrams together.
 
 ![Demo](https://raw.githubusercontent.com/mhlabs/cfn-diagram/master/images/demo-ascii.gif)
 

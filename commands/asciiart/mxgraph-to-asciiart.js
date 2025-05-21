@@ -79,6 +79,95 @@ class AsciiBuffer {
     }
   }
 
+  // Add a border with stack name around the buffer content
+  addBorder(stackName) {
+    // Find the actual max content width
+    let maxContentWidth = 0;
+    for (let y = 0; y < this.buffer.length; y++) {
+      // Find the position of the last non-space character in each row
+      let rowLastContentPos = 0;
+      for (let x = this.buffer[y].length - 1; x >= 0; x--) {
+        if (this.buffer[y][x] && this.buffer[y][x] !== ' ') {
+          rowLastContentPos = x;
+          break;
+        }
+      }
+      maxContentWidth = Math.max(maxContentWidth, rowLastContentPos + 1);
+    }
+    
+    // Add padding
+    const borderWidth = maxContentWidth + 4;
+    
+    // Create a new buffer with extra space for border
+    const borderedBuffer = new AsciiBuffer();
+    
+    // Draw top border
+    borderedBuffer.write(0, 0, '╭' + '─'.repeat(borderWidth - 2) + '╮');
+    
+    // Title row with stack name
+    borderedBuffer.write(0, 1, '│');
+    
+    if (stackName) {
+      const title = "Stack: " + stackName;
+      const padding = Math.max(0, Math.floor((borderWidth - 2 - title.length) / 2));
+      
+      // Print spaces up to the title
+      for (let i = 0; i < padding; i++) {
+        borderedBuffer.write(1 + i, 1, ' ');
+      }
+      
+      // Print the title
+      for (let i = 0; i < title.length; i++) {
+        borderedBuffer.write(1 + padding + i, 1, title[i]);
+      }
+      
+      // Print spaces after the title
+      for (let i = 0; i < borderWidth - 2 - padding - title.length; i++) {
+        borderedBuffer.write(1 + padding + title.length + i, 1, ' ');
+      }
+    } else {
+      // No title, just fill with spaces
+      for (let i = 0; i < borderWidth - 2; i++) {
+        borderedBuffer.write(1 + i, 1, ' ');
+      }
+    }
+    
+    // Right border of title row
+    borderedBuffer.write(borderWidth - 1, 1, '│');
+    
+    // Separator line
+    borderedBuffer.write(0, 2, '├' + '─'.repeat(borderWidth - 2) + '┤');
+    
+    // Content area (with 3-line offset for the header)
+    const contentOffset = 3;
+    
+    // Draw content with borders
+    for (let y = 0; y < this.buffer.length; y++) {
+      // Left border
+      borderedBuffer.write(0, y + contentOffset, '│');
+      
+      // Content from original buffer (with padding of 2 spaces)
+      for (let x = 0; x < this.buffer[y].length; x++) {
+        if (this.buffer[y][x]) {
+          borderedBuffer.write(2 + x, y + contentOffset, this.buffer[y][x], this.colors[y][x]);
+        }
+      }
+      
+      // Fill any remaining space with spaces
+      for (let x = this.buffer[y].length; x < borderWidth - 3; x++) {
+        borderedBuffer.write(2 + x, y + contentOffset, ' ');
+      }
+      
+      // Right border
+      borderedBuffer.write(borderWidth - 1, y + contentOffset, '│');
+    }
+    
+    // Bottom border
+    borderedBuffer.write(0, this.buffer.length + contentOffset, '╰' + '─'.repeat(borderWidth - 2) + '╯');
+    
+    return borderedBuffer;
+  }
+
   // Render the buffer to a string (for CI mode)
   toString(useColors = true) {
     let result = '';
@@ -108,6 +197,8 @@ let highestY = 0;
 
 function render(xml, options = {}) {
   const ciMode = options && options.ci === true;
+  const showBorder = options && options.border === true;
+  const stackName = options && options.stackName;
   const buffer = ciMode ? new AsciiBuffer() : null;
   
   // Reset cursor position for CI mode
@@ -176,8 +267,15 @@ function render(xml, options = {}) {
   
   // Output final buffer for CI mode, or move cursor to bottom for interactive mode
   if (ciMode) {
-    process.stdout.write(buffer.toString());
+    // Add border if option is enabled and we have a stack name
+    if (showBorder && stackName) {
+      const borderedBuffer = buffer.addBorder(stackName);
+      process.stdout.write(borderedBuffer.toString());
+    } else {
+      process.stdout.write(buffer.toString());
+    }
   } else {
+    // For now, border is only supported in CI mode
     process.stdout.write(clc.move.bottom);
     process.stdout.write(clc.move.lineBegin);
   }

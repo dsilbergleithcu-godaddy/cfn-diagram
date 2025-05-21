@@ -32,6 +32,11 @@ program
     "Generate ASCII art for CI environments (no cursor control, full output at once)",
     false
   )
+  .option(
+    "--border",
+    "Add a border with stack name around the diagram",
+    false
+  )
   .description("Generates an ascii-art diagram from a CloudFormation template")
   .action(async (cmd) => {
     const xml = await render(cmd);
@@ -55,7 +60,12 @@ async function render(cmd) {
     );
     mxGenerator.reset();
     const xml = await mxGenerator.renderTemplate(template);
-    mxGraphToAsciiArt.render(xml, { ci: cmd.ci });
+    const stackName = templateParser.getStackName(template);
+    mxGraphToAsciiArt.render(xml, { 
+      ci: cmd.ci, 
+      border: cmd.border, 
+      stackName: stackName
+    });
     return xml;
   } catch (err) {
     console.log(err.message);

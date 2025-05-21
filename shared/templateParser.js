@@ -123,6 +123,37 @@ function fromCDK(cmd) {
   return parsedTemplate;
 }
 
+function getStackName(template) {
+  // Try to extract stack name from different sources
+  
+  // 1. Check if it's a CDK template with a specific stack name
+  if (templateCache.rootTemplate) {
+    return templateCache.rootTemplate;
+  }
+  
+  // 2. Check if there's a stack ID or logical ID
+  if (template.StackId) {
+    const stackIdParts = template.StackId.split('/');
+    return stackIdParts[1] || stackIdParts[0];
+  }
+  
+  // 3. Look for a stack name in description
+  if (template.Description) {
+    const match = template.Description.match(/stack:?\s*([^\n.,]+)/i);
+    if (match) return match[1].trim();
+  }
+  
+  // 4. Check for a template name in AWSTemplateFormatVersion
+  if (template.AWSTemplateFormatVersion && template.Description) {
+    const nameMatch = template.Description.match(/name:?\s*([^\n.,]+)/i);
+    if (nameMatch) return nameMatch[1].trim();
+  }
+  
+  // 5. Default name
+  return "CloudFormation Stack";
+}
+
 module.exports = {
   get,
+  getStackName,
 };

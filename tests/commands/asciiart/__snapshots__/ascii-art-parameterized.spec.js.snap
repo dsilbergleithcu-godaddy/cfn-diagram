@@ -73,6 +73,20 @@ exports[`ascii-art for simple template in CI mode should match snapshot: CI mode
 "
 `;
 
+exports[`ascii-art for simple template in CI mode with border should match snapshot: CI mode - simple-template.yaml 1`] = `
+"
+╭──────────────────────────────────────────────────────────╮
+│               Stack: CloudFormation Stack                │
+├──────────────────────────────────────────────────────────┤
+│ ┌────────────────╮                 ┌───────────────────╮ │
+│ │MyLambdaFunction│                 │LambdaExecutionRole│ │
+│ │(lambda)        │────────────────>│(role)             │ │
+│ ╰────────────────╯                 ╰───────────────────╯ │
+╰──────────────────────────────────────────────────────────╯
+
+"
+`;
+
 exports[`ascii-art for simple template in normal mode should match snapshot: normal mode - simple-template.yaml 1`] = `
 "
 ──────────────────────────>┌────────────────╮│                ││                │╰────────────────╯MyLambdaFunction(lambda)┌───────────────────╮│                   ││                   │╰───────────────────╯LambdaExecutionRole(role)

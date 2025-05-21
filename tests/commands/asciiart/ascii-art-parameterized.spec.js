@@ -26,11 +26,18 @@ const testCases = [
     templateFile: 'complex-template.yaml',
     ciMode: true,
     contentChecks: ['ProcessingFunction', 'DataTable', 'ApiGateway', 'NotificationTopic', 'StorageBucket', 'EmailSubscription']
+  },
+  {
+    name: 'simple template in CI mode with border',
+    templateFile: 'simple-template.yaml',
+    ciMode: true,
+    border: true,
+    contentChecks: ['Lambda', 'Role', '│', '╭', '╮', '╯', '╰', '├', '┤', 'Stack: CloudFormation Stack']
   }
 ];
 
 // Helper function to run the CLI command
-function runAsciiArt(templateFile, ciMode) {
+function runAsciiArt(templateFile, ciMode, border = false) {
   // Use the project's root directory
   const projectRoot = path.resolve(__dirname, '../../../');
   
@@ -47,6 +54,11 @@ function runAsciiArt(templateFile, ciMode) {
   // Add ci flag if needed
   if (ciMode) {
     args.push('--ci');
+  }
+  
+  // Add border flag if needed
+  if (border) {
+    args.push('--border');
   }
   
   // Run the CLI command
@@ -68,7 +80,7 @@ function stripAnsiCodes(text) {
 }
 
 // For each test case, create a describe block
-testCases.forEach(({ name, templateFile, ciMode, contentChecks }) => {
+testCases.forEach(({ name, templateFile, ciMode, border = false, contentChecks }) => {
   describe(`ascii-art for ${name}`, () => {
     
     let result;
@@ -76,7 +88,7 @@ testCases.forEach(({ name, templateFile, ciMode, contentChecks }) => {
     
     // Setup - run once for each describe block
     beforeAll(() => {
-      result = runAsciiArt(templateFile, ciMode);
+      result = runAsciiArt(templateFile, ciMode, border);
       plainText = stripAnsiCodes(result.stdout);
     });
     
