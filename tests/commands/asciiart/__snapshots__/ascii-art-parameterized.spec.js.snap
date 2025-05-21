@@ -153,3 +153,17 @@ exports[`ascii-art for simple template in normal mode should match snapshot: nor
 ──────────────────────────>┌────────────────╮│                ││                │╰────────────────╯MyLambdaFunction(lambda)┌───────────────────╮│                   ││                   │╰───────────────────╯LambdaExecutionRole(role)
 "
 `;
+
+exports[`ascii-art for template with very long stack name in CI mode with border should match snapshot: CI mode - very-long-stack-name-template-that-will-overflow-border.yaml 1`] = `
+"
+╭─────────────────────────────────────────────────────╮
+│ Stack: name that will test border overflow handling │
+├─────────────────────────────────────────────────────┤
+│ ┌──────────╮                                        │
+│ │LambdaRole│                                        │
+│ │(role)    │                                        │
+│ ╰──────────╯                                        │
+╰─────────────────────────────────────────────────────╯
+
+"
+`;

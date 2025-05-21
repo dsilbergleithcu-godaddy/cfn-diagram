@@ -153,7 +153,7 @@ This creates a box around your diagram with the stack name at the top, making it
 2. Information in the template description
 3. The template filename (without extension)
 
-This is especially useful when displaying multiple stack diagrams together in documentation or logs.
+The border will automatically adjust its width to fit both the diagram content and the stack name, ensuring proper display even with very long stack names. This is especially useful when displaying multiple stack diagrams together in documentation or logs.
 
 ![Demo](https://raw.githubusercontent.com/mhlabs/cfn-diagram/master/images/demo-ascii.gif)
 

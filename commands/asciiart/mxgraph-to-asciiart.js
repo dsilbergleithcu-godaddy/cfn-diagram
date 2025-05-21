@@ -95,8 +95,12 @@ class AsciiBuffer {
       maxContentWidth = Math.max(maxContentWidth, rowLastContentPos + 1);
     }
     
-    // Add padding
-    const borderWidth = maxContentWidth + 4;
+    // Calculate required width for the stack name (with margin)
+    const title = stackName ? "Stack: " + stackName : "";
+    const minWidthForTitle = title.length + 4; // Add some padding around the title
+    
+    // Add padding and ensure border is wide enough for both content and title
+    const borderWidth = Math.max(maxContentWidth + 4, minWidthForTitle);
     
     // Create a new buffer with extra space for border
     const borderedBuffer = new AsciiBuffer();

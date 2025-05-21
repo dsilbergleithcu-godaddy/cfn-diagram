@@ -40,6 +40,13 @@ const testCases = [
     ciMode: true,
     border: true,
     contentChecks: ['ProcessingFunction', 'DataTable', 'ApiGateway', '│', '╭', '╮', '╯', '╰', '├', '┤', 'Stack: complex-template']
+  },
+  {
+    name: 'template with very long stack name in CI mode with border',
+    templateFile: 'very-long-stack-name-template-that-will-overflow-border.yaml',
+    ciMode: true,
+    border: true,
+    contentChecks: ['LambdaRole', 'role', '│', '╭', '╮', '╯', '╰', '├', '┤', 'Stack: name that will test border overflow handling']
   }
 ];
 
