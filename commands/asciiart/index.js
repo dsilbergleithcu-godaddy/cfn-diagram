@@ -27,6 +27,11 @@ program
     "-e, --exclude-types [excludeTypes...]",
     "List of resource types to exclude when using CI mode"
   )
+  .option(
+    "--ci",
+    "Generate ASCII art for CI environments (no cursor control, full output at once)",
+    false
+  )
   .description("Generates an ascii-art diagram from a CloudFormation template")
   .action(async (cmd) => {
     const xml = await render(cmd);
@@ -50,7 +55,7 @@ async function render(cmd) {
     );
     mxGenerator.reset();
     const xml = await mxGenerator.renderTemplate(template);
-    mxGraphToAsciiArt.render(xml);
+    mxGraphToAsciiArt.render(xml, { ci: cmd.ci });
     return xml;
   } catch (err) {
     console.log(err.message);

@@ -120,10 +120,25 @@ Options:
   -s, --skip-synth                       Skips CDK synth (default: false)
   -w, --watch                            Watch for changes in template and rerender diagram on change (default: false)
   -e, --exclude-types [excludeTypes...]  List of resource types to exclude when using CI mode
-  -h, --help                             display help for command                           display help for command
+  --ci                                  Generate ASCII art for CI environments (no cursor control, full output at once)
+  -h, --help                             display help for command
 ```
 
 Renders a simple Ascii-art diagram of your template directly in the console. Useful to gain a quick overview of smaller stacks.
+
+#### Using CI Mode for ASCII Art
+
+When running in CI/CD pipelines or when needing console output that works well in log files, use the `--ci` flag:
+
+```
+cfn-dia ascii-art -t template.yaml --ci
+```
+
+The CI mode produces the entire diagram at once without using terminal cursor control sequences, making it suitable for:
+- CI/CD pipeline logs
+- Redirecting output to files
+- Terminals that don't support ANSI cursor movement
+- Generating predictable output for automated testing
 
 ![Demo](https://raw.githubusercontent.com/mhlabs/cfn-diagram/master/images/demo-ascii.gif)
 

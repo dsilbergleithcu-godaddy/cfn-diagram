@@ -11,16 +11,122 @@ const serviceColors = {
   dynamodb: clc.bgBlue,
 };
 
+// Buffer class for CI mode
+class AsciiBuffer {
+  constructor() {
+    this.buffer = [];
+    this.colors = [];
+    this.maxX = 0;
+    this.maxY = 0;
+  }
+
+  // Ensure the buffer is large enough for the coordinates
+  ensureSize(x, y) {
+    if (x < 0 || y < 0) return false;
+    
+    try {
+      // Expand buffer size if needed
+      this.maxX = Math.max(this.maxX, x + 1);
+      this.maxY = Math.max(this.maxY, y + 1);
+      
+      // Ensure we have enough rows
+      while (this.buffer.length <= y) {
+        this.buffer.push(Array(this.maxX).fill(' '));
+        this.colors.push(Array(this.maxX).fill(null));
+      }
+      
+      // Ensure each row has enough columns
+      for (let i = 0; i <= y; i++) {
+        if (!this.buffer[i]) {
+          this.buffer[i] = [];
+          this.colors[i] = [];
+        }
+        
+        while (this.buffer[i].length <= x) {
+          this.buffer[i].push(' ');
+          this.colors[i].push(null);
+        }
+      }
+      
+      return true;
+    } catch (err) {
+      console.error(`Error in ensureSize(${x}, ${y}): ${err.message}`);
+      return false;
+    }
+  }
+
+  // Write a character to the buffer
+  write(x, y, char, color = null) {
+    // Ensure x and y are integers
+    x = Math.floor(x);
+    y = Math.floor(y);
+    
+    if (x < 0 || y < 0) return;
+    
+    // Only proceed if ensureSize is successful
+    if (!this.ensureSize(x, y)) return;
+    
+    try {
+      // Handle non-string characters
+      if (typeof char !== 'string') {
+        char = ' '; // Default to space for non-string characters
+      }
+      
+      this.buffer[y][x] = char;
+      this.colors[y][x] = color;
+    } catch (err) {
+      console.error(`Error in buffer.write(${x}, ${y}, '${char}'): ${err.message}`);
+    }
+  }
+
+  // Render the buffer to a string (for CI mode)
+  toString(useColors = true) {
+    let result = '';
+    for (let y = 0; y < this.buffer.length; y++) {
+      let line = '';
+      for (let x = 0; x < this.buffer[y].length; x++) {
+        const char = this.buffer[y][x];
+        const color = this.colors[y][x];
+        
+        if (useColors && color) {
+          line += color(char);
+        } else {
+          line += char;
+        }
+      }
+      // Trim trailing spaces for cleaner output
+      result += line.replace(/\s+$/, '') + '\n';
+    }
+    return result;
+  }
+}
+
+// Global state for tracking cursor position in CI mode
+let currentX = 0;
+let currentY = 0;
 let highestY = 0;
-function render(xml) {
+
+function render(xml, options = {}) {
+  const ciMode = options && options.ci === true;
+  const buffer = ciMode ? new AsciiBuffer() : null;
+  
+  // Reset cursor position for CI mode
+  currentX = 0;
+  currentY = 0;
+  
   const parser = new XMLParser({
     ignoreAttributes: false,
     attributeNamePrefix: "",
   });
   const doc = parser.parse(xml);
 
-  console.clear();
+  if (!ciMode) {
+    console.clear();
+  }
+  
   const mxGraphModel = doc.mxGraphModel || doc.mxfile.diagram.mxGraphModel;
+  
+  // Render edges
   for (const cell of mxGraphModel.root.mxCell) {
     if (
       cell.mxGeometry &&
@@ -38,7 +144,9 @@ function render(xml) {
             (point.x || lastKnownX) / xScale,
             (point.y || lastKnownY) / yScale,
             color,
-            i === cell.mxGeometry.Array.mxPoint.length - 1
+            i === cell.mxGeometry.Array.mxPoint.length - 1,
+            buffer,
+            ciMode
           );
         }
         lastKnownX = point.x || lastKnownX;
@@ -48,6 +156,7 @@ function render(xml) {
     }
   }
 
+  // Render boxes
   for (const cell of mxGraphModel.root.mxCell) {
     if (cell.mxGeometry && cell.mxGeometry.width) {
       const resourceType = cell.style.match(/resIcon=mxgraph.aws4.(.+);/);
@@ -57,16 +166,24 @@ function render(xml) {
         cell.mxGeometry.y / yScale,
         resourceType ? resourceType[1] : "",
         cell.value,
-        color ? color[1] : "#000000"
+        color ? color[1] : "#000000",
+        buffer,
+        ciMode
       );
       highestY = Math.max(cell.mxGeometry.y + 4, highestY);
     }
   }
-  process.stdout.write(clc.move.bottom);
-  process.stdout.write(clc.move.lineBegin);
+  
+  // Output final buffer for CI mode, or move cursor to bottom for interactive mode
+  if (ciMode) {
+    process.stdout.write(buffer.toString());
+  } else {
+    process.stdout.write(clc.move.bottom);
+    process.stdout.write(clc.move.lineBegin);
+  }
 }
 
-function edge(fromX, fromY, toX, toY, color, isLast) {
+function edge(fromX, fromY, toX, toY, color, isLast, buffer, ciMode) {
   const coloredLine = clc.xterm(color);
   let x = fromX;
   let y = fromY;
@@ -90,41 +207,44 @@ function edge(fromX, fromY, toX, toY, color, isLast) {
       if (flooredX == prevX) char = "│";
       if (flooredX > prevX) {
         char = "└";
-        moveToAbsolute(flooredX, flooredY - 1);
-        process.stdout.write(coloredLine("┐"));
+        moveToAbsolute(flooredX, flooredY - 1, buffer, ciMode);
+        print(coloredLine, "┐", buffer, ciMode);
       }
       if (flooredX < prevX) {
         char = "┘";
-        moveToAbsolute(flooredX, flooredY - 1);
-        process.stdout.write(coloredLine("┌"));
+        moveToAbsolute(flooredX, flooredY - 1, buffer, ciMode);
+        print(coloredLine, "┌", buffer, ciMode);
       }
     }
     if (flooredY < prevY) {
       if (flooredX === prevX) char = "│";
       if (flooredX > prevX) {
         char = "┌";
-        moveToAbsolute(flooredX, flooredY + 1);
-        process.stdout.write(coloredLine("┘"));
+        moveToAbsolute(flooredX, flooredY + 1, buffer, ciMode);
+        print(coloredLine, "┘", buffer, ciMode);
       }
       if (flooredX < prevX) {
         char = "┐";
-        moveToAbsolute(flooredX, flooredY + 1);
-        process.stdout.write(coloredLine("└"));
+        moveToAbsolute(flooredX, flooredY + 1, buffer, ciMode);
+        print(coloredLine, "└", buffer, ciMode);
       }
     }
     prevX = flooredX;
     prevY = flooredY;
-    moveToAbsolute(flooredX, flooredY);
-    process.stdout.write(coloredLine(char));
+    moveToAbsolute(flooredX, flooredY, buffer, ciMode);
+    print(coloredLine, char, buffer, ciMode);
   }
   if (isLast) {
-    moveToAbsolute(toX, toY);
-    if (fromX > toX) process.stdout.write(coloredLine("<"));
-    else process.stdout.write(coloredLine(">"));
+    moveToAbsolute(toX, toY, buffer, ciMode);
+    if (fromX > toX) {
+      print(coloredLine, "<", buffer, ciMode);
+    } else {
+      print(coloredLine, ">", buffer, ciMode);
+    }
   }
 }
 
-function box(x, y, type, text, color) {
+function box(x, y, type, text, color, buffer, ciMode) {
   const coloredBox =
     clc.bgXterm(rgbToX256(...colorConvert.hex.rgb(color))) || clc.bgBlack;
 
@@ -135,30 +255,53 @@ function box(x, y, type, text, color) {
     text = text.substring(0, 20) + "...";
   }
   const width = Math.max(text.length, type.length + 2) + 2;
-  moveToAbsolute(x, y);
-  print(coloredBox, `┌${"─".repeat(width - 2)}╮`);
+  moveToAbsolute(x, y, buffer, ciMode);
+  print(coloredBox, `┌${"─".repeat(width - 2)}╮`, buffer, ciMode);
   for (let row = 0; row < height; row++) {
-    moveToRelative(-width, 1);
-    print(coloredBox, `│${" ".repeat(width - 2)}│`);
+    moveToRelative(-width, 1, buffer, ciMode);
+    print(coloredBox, `│${" ".repeat(width - 2)}│`, buffer, ciMode);
   }
-  moveToRelative(-width, 1);
-  print(coloredBox, `╰${"─".repeat(width - 2)}╯`);
-  moveToAbsolute(x + 1, y + Math.floor(height / 2));
-  print(coloredBox, text);
-  moveToAbsolute(x + 1, y + Math.floor(height / 2) + 1);
-  print(coloredBox, `(${type})`);
+  moveToRelative(-width, 1, buffer, ciMode);
+  print(coloredBox, `╰${"─".repeat(width - 2)}╯`, buffer, ciMode);
+  moveToAbsolute(x + 1, y + Math.floor(height / 2), buffer, ciMode);
+  print(coloredBox, text, buffer, ciMode);
+  moveToAbsolute(x + 1, y + Math.floor(height / 2) + 1, buffer, ciMode);
+  print(coloredBox, `(${type})`, buffer, ciMode);
 }
 
-function print(coloredBox, text) {
-  process.stdout.write(coloredBox(text));
+function print(color, text, buffer, ciMode) {
+  if (ciMode && buffer) {
+    // In CI mode, write to the buffer with color information
+    for (let i = 0; i < text.length; i++) {
+      buffer.write(currentX + i, currentY, text[i], color);
+    }
+    currentX += text.length;
+  } else {
+    // In interactive mode, directly write to stdout
+    process.stdout.write(color(text));
+  }
 }
 
-function moveToAbsolute(x, y) {
-  process.stdout.write(clc.move.to(x, y + 7));
+function moveToAbsolute(x, y, buffer, ciMode) {
+  if (ciMode && buffer) {
+    // In CI mode, just update the current position (no actual cursor movement)
+    currentX = x;
+    currentY = y; // No +7 offset in CI mode
+  } else {
+    // In interactive mode, use the original cursor control with Y offset
+    process.stdout.write(clc.move.to(x, y + 7));
+  }
 }
 
-function moveToRelative(x, y) {
-  process.stdout.write(clc.move(x, y));
+function moveToRelative(x, y, buffer, ciMode) {
+  if (ciMode && buffer) {
+    // In CI mode, just update the current position
+    currentX += x;
+    currentY += y;
+  } else {
+    // In interactive mode, use the original cursor control
+    process.stdout.write(clc.move(x, y));
+  }
 }
 
 function rgbToX256(r, g, b) {
