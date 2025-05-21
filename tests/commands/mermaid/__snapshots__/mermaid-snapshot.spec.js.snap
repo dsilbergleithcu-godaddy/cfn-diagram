@@ -1,0 +1,39 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`Mermaid Output Format: Complex template should match snapshot: mermaid - complex-template.yaml 1`] = `
+"\`\`\`mermaid
+	flowchart TB;
+		subgraph &nbsp;
+		rootApiGatewayResource[ApiGatewayResource<br/>ApiGateway::Resource]-->rootApiGateway[ApiGateway<br/>ApiGateway::RestApi]
+		rootApiGatewayMethod[ApiGatewayMethod<br/>ApiGateway::Method]-->rootApiGateway[ApiGateway<br/>ApiGateway::RestApi]
+		rootApiGatewayMethod[ApiGatewayMethod<br/>ApiGateway::Method]-->rootApiGatewayResource[ApiGatewayResource<br/>ApiGateway::Resource]
+		rootApiGatewayDeployment[ApiGatewayDeployment<br/>ApiGateway::Deployment]-->rootApiGateway[ApiGateway<br/>ApiGateway::RestApi]
+		rootProcessingFunction[[ProcessingFunction<br/>Lambda::Function]]-->rootProcessingLambdaRole[ProcessingLambdaRole<br/>IAM::Role]
+		rootProcessingLambdaRole[ProcessingLambdaRole<br/>IAM::Role]-->rootiamawspolicyserviceroleawslambdabasicexecutionrole[iamawspolicyserviceroleawslambdabasicexecutionrole<br/>External resource (aws::iam::policy)]
+		rootProcessingLambdaRole[ProcessingLambdaRole<br/>IAM::Role]-->rootNotificationTopic[NotificationTopic<br/>SNS::Topic]
+		rootProcessingLambdaRole[ProcessingLambdaRole<br/>IAM::Role]-->rootDataTable[(DataTable<br/>DynamoDB::Table)]
+		rootProcessorFunction[[ProcessorFunction<br/>Lambda::Function]]-->rootProcessorLambdaRole[ProcessorLambdaRole<br/>IAM::Role]
+		rootProcessorLambdaRole[ProcessorLambdaRole<br/>IAM::Role]-->rootiamawspolicyserviceroleawslambdabasicexecutionrole[iamawspolicyserviceroleawslambdabasicexecutionrole<br/>External resource (aws::iam::policy)]
+		rootProcessorLambdaRole[ProcessorLambdaRole<br/>IAM::Role]-->rootDataTable[(DataTable<br/>DynamoDB::Table)]
+		rootStreamProcessor[StreamProcessor<br/>Lambda::EventSourceMapping]-->rootDataTable[(DataTable<br/>DynamoDB::Table)]
+		rootStreamProcessor[StreamProcessor<br/>Lambda::EventSourceMapping]-->rootProcessorFunction[[ProcessorFunction<br/>Lambda::Function]]
+		rootEmailSubscription[EmailSubscription<br/>SNS::Subscription]-->rootNotificationTopic[NotificationTopic<br/>SNS::Topic]
+		rootStorageBucketPolicy[StorageBucketPolicy<br/>S3::BucketPolicy]-->rootStorageBucket[StorageBucket<br/>S3::Bucket]
+		rootStorageBucketPolicy[StorageBucketPolicy<br/>S3::BucketPolicy]-->roots3storagebucket[s3storagebucket<br/>External resource (aws::s3::storagebucket)]
+		rootStorageBucketPolicy[StorageBucketPolicy<br/>S3::BucketPolicy]-->rootProcessingLambdaRole[ProcessingLambdaRole<br/>IAM::Role]
+
+  	end
+
+\`\`\`"
+`;
+
+exports[`Mermaid Output Format: Simple template should match snapshot: mermaid - simple-template.yaml 1`] = `
+"\`\`\`mermaid
+	flowchart TB;
+		subgraph &nbsp;
+		rootMyLambdaFunction[[MyLambdaFunction<br/>Lambda::Function]]-->rootLambdaExecutionRole[LambdaExecutionRole<br/>IAM::Role]
+
+  	end
+
+\`\`\`"
+`;
