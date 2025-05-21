@@ -32,7 +32,14 @@ const testCases = [
     templateFile: 'simple-template.yaml',
     ciMode: true,
     border: true,
-    contentChecks: ['Lambda', 'Role', '│', '╭', '╮', '╯', '╰', '├', '┤', 'Stack: CloudFormation Stack']
+    contentChecks: ['Lambda', 'Role', '│', '╭', '╮', '╯', '╰', '├', '┤', 'Stack: simple-template']
+  },
+  {
+    name: 'complex template in CI mode with border',
+    templateFile: 'complex-template.yaml',
+    ciMode: true,
+    border: true,
+    contentChecks: ['ProcessingFunction', 'DataTable', 'ApiGateway', '│', '╭', '╮', '╯', '╰', '├', '┤', 'Stack: complex-template']
   }
 ];
 

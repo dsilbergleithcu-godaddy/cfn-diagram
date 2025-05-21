@@ -147,7 +147,13 @@ You can also add a border with the stack name using the `--border` flag (require
 cfn-dia ascii-art -t template.yaml --ci --border
 ```
 
-This creates a box around your diagram with the stack name at the top, making it clear which stack the diagram represents, especially when displaying multiple stack diagrams together.
+This creates a box around your diagram with the stack name at the top, making it clear which stack the diagram represents. The tool will try to extract the stack name from:
+
+1. The template's CloudFormation stack name (if deployed)
+2. Information in the template description
+3. The template filename (without extension)
+
+This is especially useful when displaying multiple stack diagrams together in documentation or logs.
 
 ![Demo](https://raw.githubusercontent.com/mhlabs/cfn-diagram/master/images/demo-ascii.gif)
 

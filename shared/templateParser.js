@@ -12,6 +12,8 @@ function get(cmd) {
       cmd.templateFile = "template.yaml";
     }
     templateString = fs.readFileSync(cmd.templateFile);
+    // Store the filename for potential use in stack naming
+    templateCache.lastFilename = cmd.templateFile;
   } catch {
     try {
       templateString = fs.readFileSync("cdk.json").toString();
@@ -149,7 +151,16 @@ function getStackName(template) {
     if (nameMatch) return nameMatch[1].trim();
   }
   
-  // 5. Default name
+  // 5. Use the template filename if available
+  if (templateCache.lastFilename) {
+    // Extract the filename without path and extension
+    const filename = templateCache.lastFilename.split('/').pop().replace(/\.(yaml|yml|json)$/, '');
+    if (filename && filename !== 'template' && filename !== 'cdk') {
+      return filename;
+    }
+  }
+  
+  // 6. Default name
   return "CloudFormation Stack";
 }
 

@@ -1,6 +1,8 @@
 const templates = {};
-let rootTemplate
+let rootTemplate;
+let lastFilename;
 module.exports = {
     templates,
-    rootTemplate
+    rootTemplate,
+    lastFilename
 }
