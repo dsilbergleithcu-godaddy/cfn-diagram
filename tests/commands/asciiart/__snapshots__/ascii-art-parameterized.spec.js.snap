@@ -159,10 +159,10 @@ exports[`ascii-art for template with very long stack name in CI mode with border
 ╭─────────────────────────────────────────────────────╮
 │ Stack: name that will test border overflow handling │
 ├─────────────────────────────────────────────────────┤
-│ ┌──────────╮                                        │
-│ │LambdaRole│                                        │
-│ │(role)    │                                        │
-│ ╰──────────╯                                        │
+│                    ┌──────────╮                     │
+│                    │LambdaRole│                     │
+│                    │(role)    │                     │
+│                    ╰──────────╯                     │
 ╰─────────────────────────────────────────────────────╯
 
 "

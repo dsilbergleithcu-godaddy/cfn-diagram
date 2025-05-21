@@ -150,16 +150,22 @@ class AsciiBuffer {
       // Left border
       borderedBuffer.write(0, y + contentOffset, '│');
       
-      // Content from original buffer (with padding of 2 spaces)
+      // Calculate centering offset when border is wider than content
+      const extraWidth = borderWidth - 4 - maxContentWidth; // -4 for the border and padding
+      const centeringOffset = Math.floor(extraWidth / 2);
+      
+      // Content from original buffer (with padding plus centering)
       for (let x = 0; x < this.buffer[y].length; x++) {
         if (this.buffer[y][x]) {
-          borderedBuffer.write(2 + x, y + contentOffset, this.buffer[y][x], this.colors[y][x]);
+          borderedBuffer.write(2 + centeringOffset + x, y + contentOffset, this.buffer[y][x], this.colors[y][x]);
         }
       }
       
       // Fill any remaining space with spaces
-      for (let x = this.buffer[y].length; x < borderWidth - 3; x++) {
-        borderedBuffer.write(2 + x, y + contentOffset, ' ');
+      for (let x = 0; x < borderWidth - 2; x++) {
+        if (!borderedBuffer.buffer[y + contentOffset][x + 1]) {  // +1 to skip the left border
+          borderedBuffer.write(x + 1, y + contentOffset, ' ');
+        }
       }
       
       // Right border
