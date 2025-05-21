@@ -114,7 +114,7 @@ Usage: cfn-dia ascii-art|a [options]
 Generates an ascii-art diagram from a CloudFormation template
 
 Options:
-  -t, --template-file [templateFile]     Path to template or cdk.json file (default: "template.yaml or cdk.json")
+  -t, --template-file [templateFile]     Path to template or cdk.json file (or comma-separated list for side-by-side rendering) (default: "template.yaml or cdk.json")
   --stacks [stacks]                      Comma separated list of stack name(s) to include. Defaults to all.
   -co, --cdk-output [outputPath]         CDK synth output path (default: "cdk.out")
   -s, --skip-synth                       Skips CDK synth (default: false)
@@ -122,6 +122,8 @@ Options:
   -e, --exclude-types [excludeTypes...]  List of resource types to exclude when using CI mode
   --ci                                  Generate ASCII art for CI environments (no cursor control, full output at once)
   --border                              Add a border with stack name around the diagram
+  --side-by-side                        Render multiple templates side-by-side
+  --spacing [spacing]                    Number of spaces between stacks when rendering side-by-side (default: "4")
   -h, --help                             display help for command
 ```
 
@@ -154,6 +156,32 @@ This creates a box around your diagram with the stack name at the top, making it
 3. The template filename (without extension)
 
 The border will automatically adjust its width to fit both the diagram content and the stack name, ensuring proper display even with very long stack names. For better visual presentation, diagram resources are also automatically centered within the border when the stack name requires a wider border. This is especially useful when displaying multiple stack diagrams together in documentation or logs.
+
+#### Side-by-Side Rendering
+
+You can render multiple templates side-by-side in a single diagram, making it easier to compare different stacks or visualize relationships between them. To use this feature:
+
+```
+cfn-dia ascii-art -t template1.yaml,template2.yaml,template3.yaml --side-by-side --ci
+```
+
+Side-by-side rendering requires the `--ci` flag to be enabled. You can combine it with the `--border` flag to clearly identify each stack:
+
+```
+cfn-dia ascii-art -t template1.yaml,template2.yaml --side-by-side --ci --border
+```
+
+You can also adjust the spacing between stacks using the `--spacing` option (default is 4 spaces):
+
+```
+cfn-dia ascii-art -t template1.yaml,template2.yaml --side-by-side --ci --spacing 8
+```
+
+This feature is particularly useful for:
+- Comparing different versions of the same stack
+- Visualizing related stacks that work together
+- Analyzing dependencies between stacks
+- Creating comprehensive architecture documentation
 
 ![Demo](https://raw.githubusercontent.com/mhlabs/cfn-diagram/master/images/demo-ascii.gif)
 
