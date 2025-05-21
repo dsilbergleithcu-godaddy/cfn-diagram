@@ -209,7 +209,9 @@ function render(xml, options = {}) {
   const ciMode = options && options.ci === true;
   const showBorder = options && options.border === true;
   const stackName = options && options.stackName;
-  const buffer = ciMode ? new AsciiBuffer() : null;
+  const skipOutput = options && options.skipOutput === true;
+  const skipBorder = options && options.skipBorder === true;
+  const buffer = options.buffer || (ciMode ? new AsciiBuffer() : null);
   
   // Reset cursor position for CI mode
   currentX = 0;
@@ -275,19 +277,27 @@ function render(xml, options = {}) {
     }
   }
   
-  // Output final buffer for CI mode, or move cursor to bottom for interactive mode
+  // Process the buffer for output
   if (ciMode) {
-    // Add border if option is enabled and we have a stack name
-    if (showBorder && stackName) {
-      const borderedBuffer = buffer.addBorder(stackName);
-      process.stdout.write(borderedBuffer.toString());
-    } else {
-      process.stdout.write(buffer.toString());
+    // Add border if option is enabled, we have a stack name, and we're not skipping borders
+    let finalBuffer = buffer;
+    if (showBorder && stackName && !skipBorder) {
+      finalBuffer = buffer.addBorder(stackName);
     }
+    
+    // Output the buffer unless skipOutput is set
+    if (!skipOutput) {
+      process.stdout.write(finalBuffer.toString());
+    }
+    
+    // Return the buffer for side-by-side rendering
+    return finalBuffer;
   } else {
     // For now, border is only supported in CI mode
-    process.stdout.write(clc.move.bottom);
-    process.stdout.write(clc.move.lineBegin);
+    if (!skipOutput) {
+      process.stdout.write(clc.move.bottom);
+      process.stdout.write(clc.move.lineBegin);
+    }
   }
 }
 
@@ -450,6 +460,62 @@ function rgbToX256(r, g, b) {
   return colorErr <= grayErr ? 16 + colorIndex : 232 + grayIndex;
 }
 
+/**
+ * Combines multiple AsciiBuffer instances side-by-side
+ * @param {Array<AsciiBuffer>} buffers - Array of AsciiBuffer instances to combine
+ * @param {number} spacing - Number of spaces between buffers
+ * @returns {AsciiBuffer} A new buffer containing all input buffers side-by-side
+ */
+function combineBuffersSideBySide(buffers, spacing = 4) {
+  if (!buffers || !buffers.length) {
+    return new AsciiBuffer();
+  }
+  
+  if (buffers.length === 1) {
+    return buffers[0];
+  }
+
+  // Find the maximum height across all buffers
+  const maxHeight = Math.max(...buffers.map(buffer => buffer.buffer.length));
+  
+  // Create a new buffer for the combined output
+  const combinedBuffer = new AsciiBuffer();
+  
+  // Get widths of each buffer
+  const bufferWidths = buffers.map(buffer => {
+    const lastRow = buffer.buffer.length - 1;
+    if (lastRow < 0) return 0;
+    return buffer.buffer[lastRow].length;
+  });
+  
+  // Render each row
+  for (let y = 0; y < maxHeight; y++) {
+    let currentX = 0;
+    
+    // Process each buffer
+    for (let bufferIndex = 0; bufferIndex < buffers.length; bufferIndex++) {
+      const buffer = buffers[bufferIndex];
+      
+      // If this buffer has content for this row
+      if (y < buffer.buffer.length) {
+        const row = buffer.buffer[y];
+        
+        // Write each character in the row with its color
+        for (let x = 0; x < row.length; x++) {
+          combinedBuffer.write(currentX + x, y, row[x], buffer.colors[y] ? buffer.colors[y][x] : null);
+        }
+      }
+      
+      // Move to the position for the next buffer
+      currentX += bufferWidths[bufferIndex] + (bufferIndex < buffers.length - 1 ? spacing : 0);
+    }
+  }
+  
+  return combinedBuffer;
+}
+
 module.exports = {
   render,
+  combineBuffersSideBySide,
+  AsciiBuffer
 };
