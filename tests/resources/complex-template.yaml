@@ -1,0 +1,220 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Complex CloudFormation template with multiple resources and dependencies'
+
+Resources:
+  # API Gateway with Lambda Integration
+  ApiGateway:
+    Type: AWS::ApiGateway::RestApi
+    Properties:
+      Name: ComplexAPI
+      Description: API for complex template testing
+
+  ApiGatewayResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref ApiGateway
+      ParentId: !GetAtt ApiGateway.RootResourceId
+      PathPart: items
+
+  ApiGatewayMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref ApiGateway
+      ResourceId: !Ref ApiGatewayResource
+      HttpMethod: POST
+      AuthorizationType: NONE
+      Integration:
+        Type: AWS
+        IntegrationHttpMethod: POST
+        Uri: !Sub arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ProcessingFunction.Arn}/invocations
+      MethodResponses:
+        - StatusCode: 200
+  
+  ApiGatewayDeployment:
+    Type: AWS::ApiGateway::Deployment
+    DependsOn: ApiGatewayMethod
+    Properties:
+      RestApiId: !Ref ApiGateway
+      Description: Production deployment for complex API
+
+  # Lambda function for API processing
+  ProcessingFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Handler: index.handler
+      Role: !GetAtt ProcessingLambdaRole.Arn
+      Runtime: nodejs16.x
+      Code:
+        ZipFile: |
+          exports.handler = async (event) => {
+            console.log('Received event:', JSON.stringify(event));
+            
+            // Process incoming data
+            const body = JSON.parse(event.body || '{}');
+            
+            // Store in DynamoDB
+            await storeInDynamoDB(body);
+            
+            // Publish notification
+            await publishToSNS(body);
+            
+            return {
+              statusCode: 200,
+              body: JSON.stringify({ message: 'Successfully processed data' })
+            };
+          };
+
+  ProcessingLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: DynamoDBAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:PutItem
+                Resource: !GetAtt DataTable.Arn
+        - PolicyName: SNSPublish
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - sns:Publish
+                Resource: !Ref NotificationTopic
+
+  # Lambda triggered by DynamoDB Streams
+  ProcessorFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Handler: index.handler
+      Role: !GetAtt ProcessorLambdaRole.Arn
+      Runtime: nodejs16.x
+      Code:
+        ZipFile: |
+          exports.handler = async (event) => {
+            console.log('Processing DynamoDB Stream event:', JSON.stringify(event));
+            // Process each record
+            for (const record of event.Records) {
+              if (record.eventName === 'INSERT') {
+                await processNewItem(record.dynamodb.NewImage);
+              }
+            }
+            return { status: 'success' };
+          };
+
+  ProcessorLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: DynamoDBStreamsAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:GetRecords
+                  - dynamodb:GetShardIterator
+                  - dynamodb:DescribeStream
+                  - dynamodb:ListStreams
+                Resource: !GetAtt DataTable.StreamArn
+
+  # DynamoDB Table with Stream
+  DataTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      AttributeDefinitions:
+        - AttributeName: id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: id
+          KeyType: HASH
+      ProvisionedThroughput:
+        ReadCapacityUnits: 5
+        WriteCapacityUnits: 5
+      StreamSpecification:
+        StreamViewType: NEW_IMAGE
+
+  # Event Source Mapping
+  StreamProcessor:
+    Type: AWS::Lambda::EventSourceMapping
+    Properties:
+      BatchSize: 10
+      Enabled: true
+      EventSourceArn: !GetAtt DataTable.StreamArn
+      FunctionName: !GetAtt ProcessorFunction.Arn
+      StartingPosition: LATEST
+
+  # SNS Topic and Subscription
+  NotificationTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      DisplayName: ComplexTemplateNotifications
+      TopicName: complex-template-notifications
+
+  EmailSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      Protocol: email
+      Endpoint: admin@example.com
+      TopicArn: !Ref NotificationTopic
+
+  # S3 Bucket for file storage
+  StorageBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub 'complex-template-storage-${AWS::AccountId}'
+      VersioningConfiguration:
+        Status: Enabled
+
+  StorageBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref StorageBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS: !GetAtt ProcessingLambdaRole.Arn
+            Action:
+              - s3:PutObject
+              - s3:GetObject
+            Resource: !Sub 'arn:aws:s3:::${StorageBucket}/*'
+
+Outputs:
+  ApiEndpoint:
+    Description: URL of the API Gateway endpoint
+    Value: !Sub https://${ApiGateway}.execute-api.${AWS::Region}.amazonaws.com/prod/items
+
+  DynamoDBTable:
+    Description: Name of the DynamoDB table
+    Value: !Ref DataTable
+
+  SNSTopicArn:
+    Description: ARN of the SNS topic
+    Value: !Ref NotificationTopic
+
+  S3BucketName:
+    Description: Name of the S3 bucket
+    Value: !Ref StorageBucket

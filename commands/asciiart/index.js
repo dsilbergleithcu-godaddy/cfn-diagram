@@ -9,12 +9,22 @@ program
   .alias("a")
   .option(
     "-t, --template-file [templateFile]",
-    "Path to template or cdk.json file",
+    "Path to template or cdk.json file (or comma-separated list of template files for side-by-side rendering)",
     "template.yaml or cdk.json"
   )
   .option(
     "--stacks [stacks]",
     "Comma separated list of stack name(s) to include. Defaults to all."
+  )
+  .option(
+    "--side-by-side",
+    "Render multiple templates side-by-side",
+    false
+  )
+  .option(
+    "--spacing [spacing]",
+    "Number of spaces between stacks when rendering side-by-side",
+    "4"
   )
   .option("-co, --cdk-output [outputPath]", "CDK synth output path", `cdk.out`)
   .option("-s, --skip-synth", "Skips CDK synth", false)
@@ -27,10 +37,25 @@ program
     "-e, --exclude-types [excludeTypes...]",
     "List of resource types to exclude when using CI mode"
   )
+  .option(
+    "--ci",
+    "Generate ASCII art for CI environments (no cursor control, full output at once)",
+    false
+  )
+  .option(
+    "--border",
+    "Add a border with stack name around the diagram",
+    false
+  )
+  .option(
+    "--title [title]",
+    "Custom title for the outer border when rendering multiple diagrams",
+    ""
+  )
   .description("Generates an ascii-art diagram from a CloudFormation template")
   .action(async (cmd) => {
-    const xml = await render(cmd);
-    if (cmd.watch) {
+    await render(cmd);
+    if (cmd.watch && !cmd.sideBySide) {
       fs.watchFile(cmd.templateFile, (a, b) => {
         render(cmd);
       });
@@ -38,20 +63,228 @@ program
   });
 async function render(cmd) {
   try {
-    const template = templateParser.get(cmd).template;
+    // Check if we're doing side-by-side rendering with multiple templates
+    const sideBySide = cmd.sideBySide;
+    const spacing = parseInt(cmd.spacing || '4', 10);
+    
+    // Parse the template file(s)
+    let templateFiles = [cmd.templateFile];
+    if (sideBySide && cmd.templateFile.includes(',')) {
+      // Split the comma-separated list of template files
+      templateFiles = cmd.templateFile.split(',').map(file => file.trim());
+    }
+    
+    if (templateFiles.length === 1 && !sideBySide) {
+      // Original behavior for a single template
+      const template = templateParser.get({ ...cmd, templateFile: templateFiles[0] }).template;
 
-    if (!template.Resources) {
-      console.log("Can't find resources");
+      if (!template.Resources) {
+        console.log("Can't find resources in " + templateFiles[0]);
+        return;
+      }
+      filterConfig.resourceNamesToInclude = Object.keys(template.Resources);
+      filterConfig.resourceTypesToInclude = Object.keys(template.Resources).map(
+        (p) => template.Resources[p].Type
+      );
+      mxGenerator.reset();
+      const xml = await mxGenerator.renderTemplate(template);
+      const stackName = templateParser.getStackName(template);
+      mxGraphToAsciiArt.render(xml, { 
+        ci: cmd.ci, 
+        border: cmd.border, 
+        stackName: stackName
+      });
+      return xml;
+    } else {
+      // Handle multiple templates for side-by-side rendering
+      const diagrams = [];
+      
+      for (const templateFile of templateFiles) {
+        // Process each template file separately
+        try {
+          const template = templateParser.get({ ...cmd, templateFile }).template;
+          
+          if (!template.Resources) {
+            console.log("Can't find resources in " + templateFile + ", skipping.");
+            continue;
+          }
+          
+          filterConfig.resourceNamesToInclude = Object.keys(template.Resources);
+          filterConfig.resourceTypesToInclude = Object.keys(template.Resources).map(
+            (p) => template.Resources[p].Type
+          );
+          
+          // Reset the mxGenerator for each template
+          mxGenerator.reset();
+          
+          // Generate the XML and render to an ASCII buffer (not to stdout)
+          const xml = await mxGenerator.renderTemplate(template);
+          const stackName = templateParser.getStackName(template);
+          
+          // Create a buffer for this diagram
+          let buffer = new mxGraphToAsciiArt.AsciiBuffer();
+          
+          // Render this diagram to the buffer without outputting to stdout
+          buffer = mxGraphToAsciiArt.render(xml, {
+            ci: true, // Force CI mode for buffer generation
+            border: false, // ALWAYS skip borders when doing side-by-side
+            stackName: stackName,
+            buffer: buffer,
+            skipOutput: true // Skip direct output to stdout
+          });
+          
+          // Store diagram data
+          diagrams.push({
+            buffer: buffer,
+            stackName: stackName
+          });
+        } catch (err) {
+          console.log(`Error processing ${templateFile}: ${err.message}`);
+        }
+      }
+      
+      if (diagrams.length === 0) {
+        console.log("No valid templates were found.");
+        return;
+      }
+      
+      if (cmd.border) {
+        // Create individually bordered buffers
+        const borderedBuffers = [];
+        
+        for (let i = 0; i < diagrams.length; i++) {
+          const buffer = diagrams[i].buffer;
+          const stackName = diagrams[i].stackName;
+          
+          // Get maximum content width
+          let contentWidth = 0;
+          for (let y = 0; y < buffer.buffer.length; y++) {
+            for (let x = buffer.buffer[y].length - 1; x >= 0; x--) {
+              if (buffer.buffer[y][x] && buffer.buffer[y][x] !== ' ') {
+                contentWidth = Math.max(contentWidth, x + 1);
+                break;
+              }
+            }
+          }
+          
+          // Create a new buffer with a border
+          const borderedBuffer = new mxGraphToAsciiArt.AsciiBuffer();
+          
+          // Calculate border width based on content and stack name
+          const title = stackName ? "Stack: " + stackName : "";
+          const titleWidth = title.length + 4; // Add some padding
+          const borderWidth = Math.max(contentWidth + 4, titleWidth);
+          
+          // Draw top border
+          borderedBuffer.write(0, 0, '╭');
+          for (let x = 1; x < borderWidth - 1; x++) {
+            borderedBuffer.write(x, 0, '─');
+          }
+          borderedBuffer.write(borderWidth - 1, 0, '╮');
+          
+          // Draw title row
+          borderedBuffer.write(0, 1, '│');
+          borderedBuffer.write(borderWidth - 1, 1, '│');
+          
+          // Add stack name as title
+          if (stackName) {
+            // Calculate padding for centering
+            const padding = Math.floor((borderWidth - 2 - title.length) / 2);
+            
+            // Add spaces before title
+            for (let x = 0; x < padding; x++) {
+              borderedBuffer.write(1 + x, 1, ' ');
+            }
+            
+            // Add title text
+            for (let x = 0; x < title.length; x++) {
+              borderedBuffer.write(1 + padding + x, 1, title.charAt(x));
+            }
+            
+            // Add spaces after title
+            for (let x = 0; x < borderWidth - 2 - padding - title.length; x++) {
+              borderedBuffer.write(1 + padding + title.length + x, 1, ' ');
+            }
+          } else {
+            // No title, just spaces
+            for (let x = 0; x < borderWidth - 2; x++) {
+              borderedBuffer.write(1 + x, 1, ' ');
+            }
+          }
+          
+          // Draw separator line
+          borderedBuffer.write(0, 2, '├');
+          for (let x = 1; x < borderWidth - 1; x++) {
+            borderedBuffer.write(x, 2, '─');
+          }
+          borderedBuffer.write(borderWidth - 1, 2, '┤');
+          
+          // Draw content with vertical borders
+          const contentOffset = 3; // 3 rows for top border + title + separator
+          const extraWidth = borderWidth - 4 - contentWidth;
+          const centeringOffset = Math.floor(extraWidth / 2);
+          
+          // Copy content from the original buffer with centering
+          for (let y = 0; y < buffer.buffer.length; y++) {
+            // Draw left border
+            borderedBuffer.write(0, y + contentOffset, '│');
+            
+            // Draw content with centering
+            for (let x = 0; x < buffer.buffer[y].length; x++) {
+              if (buffer.buffer[y][x]) {
+                borderedBuffer.write(
+                  2 + centeringOffset + x, 
+                  y + contentOffset, 
+                  buffer.buffer[y][x],
+                  buffer.colors[y] ? buffer.colors[y][x] : null
+                );
+              }
+            }
+            
+            // Draw right border
+            borderedBuffer.write(borderWidth - 1, y + contentOffset, '│');
+          }
+          
+          // Draw bottom border
+          const bottomY = buffer.buffer.length + contentOffset;
+          borderedBuffer.write(0, bottomY, '╰');
+          for (let x = 1; x < borderWidth - 1; x++) {
+            borderedBuffer.write(x, bottomY, '─');
+          }
+          borderedBuffer.write(borderWidth - 1, bottomY, '╯');
+          
+          // Add to list of bordered buffers
+          borderedBuffers.push(borderedBuffer);
+        }
+        
+        // Combine the bordered buffers side-by-side
+        const combinedBuffer = mxGraphToAsciiArt.combineBuffersSideBySide(borderedBuffers, spacing);
+        
+        // If a custom title was provided, add an outer border with that title
+        if (cmd.title) {
+          const outerBorderedBuffer = mxGraphToAsciiArt.addOuterBorder(combinedBuffer, cmd.title);
+          process.stdout.write(outerBorderedBuffer.toString());
+        } else {
+          // Output the combined buffer without outer border
+          process.stdout.write(combinedBuffer.toString());
+        }
+      } else {
+        // For non-border mode, just combine the raw buffers and output
+        const buffers = diagrams.map(d => d.buffer);
+        const combinedBuffer = mxGraphToAsciiArt.combineBuffersSideBySide(buffers, spacing);
+        
+        // If a custom title was provided, add an outer border with that title
+        if (cmd.title) {
+          const outerBorderedBuffer = mxGraphToAsciiArt.addOuterBorder(combinedBuffer, cmd.title);
+          process.stdout.write(outerBorderedBuffer.toString());
+        } else {
+          // Output the combined buffer without outer border
+          process.stdout.write(combinedBuffer.toString());
+        }
+      }
+      
       return;
     }
-    filterConfig.resourceNamesToInclude = Object.keys(template.Resources);
-    filterConfig.resourceTypesToInclude = Object.keys(template.Resources).map(
-      (p) => template.Resources[p].Type
-    );
-    mxGenerator.reset();
-    const xml = await mxGenerator.renderTemplate(template);
-    mxGraphToAsciiArt.render(xml);
-    return xml;
   } catch (err) {
     console.log(err.message);
   }
