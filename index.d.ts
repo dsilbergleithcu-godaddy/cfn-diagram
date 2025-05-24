@@ -16,6 +16,12 @@ export interface AsciiArtOptions extends RenderOptions {
   border?: boolean;
   /** Return buffer instead of printing to console */
   returnBuffer?: boolean;
+  /** Custom title for the outer border when rendering multiple diagrams */
+  title?: string;
+  /** Enable side-by-side rendering for multiple templates, defaults to false */
+  sideBySide?: boolean;
+  /** Spacing between diagrams in side-by-side mode, defaults to 2 */
+  spacing?: number;
 }
 
 export interface DrawioOptions extends RenderOptions {

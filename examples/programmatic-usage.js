@@ -19,6 +19,32 @@ async function main() {
     console.log("\nASCII Art Output:");
     console.log(asciiOutput);
     
+    // Example 1b: ASCII art with custom title for outer border
+    console.log("\nExample 1b: ASCII art with custom title for outer border");
+    const titleOutput = await cfnDiagram.renderers.asciiArt.render(templatePath, {
+      returnBuffer: true,
+      border: true,
+      title: "My Custom CloudFormation Stack"
+    });
+    
+    console.log("\nASCII Art with Custom Title:");
+    console.log(titleOutput);
+    
+    // Example 1c: Side-by-side rendering of multiple templates
+    console.log("\nExample 1c: Side-by-side rendering with custom title");
+    const template2Path = path.join(__dirname, '../tests/resources/complex-template.yaml');
+    const sideBySideOutput = await cfnDiagram.renderers.asciiArt.render(
+      templatePath + ',' + template2Path, {
+      returnBuffer: true,
+      sideBySide: true,
+      border: true,
+      spacing: 4,
+      title: "Comparison of Two CloudFormation Templates"
+    });
+    
+    console.log("\nSide-by-side ASCII Art:");
+    console.log(sideBySideOutput);
+    
     // Example 2: Get raw XML representation
     console.log("\nExample 2: Get raw XML representation of the CloudFormation template");
     const xmlOutput = await cfnDiagram.renderTemplate(templatePath);

@@ -57,6 +57,31 @@ async function renderTemplate() {
   console.log(asciiOutput);
 }
 
+// Example: Side-by-side rendering with custom title
+async function renderSideBySide() {
+  const sideBySideOutput = await cfnDiagram.renderers.asciiArt.render(
+    'template1.yaml,template2.yaml', {
+    returnBuffer: true,
+    sideBySide: true,     // Enable side-by-side rendering
+    border: true,         // Add borders around individual stacks
+    spacing: 4,           // Space between diagrams (default: 2)
+    title: "Stack Comparison"  // Custom title for outer border
+  });
+  
+  console.log(sideBySideOutput);
+}
+
+// Example: ASCII art with custom outer border title
+async function renderWithTitle() {
+  const output = await cfnDiagram.renderers.asciiArt.render('template.yaml', {
+    returnBuffer: true,
+    border: true,
+    title: "My Production Stack"  // Custom title for outer border
+  });
+  
+  console.log(output);
+}
+
 // Example: Get raw XML representation
 async function getRawXml() {
   const xmlOutput = await cfnDiagram.renderTemplate('path/to/template.yaml');
@@ -67,7 +92,13 @@ async function getRawXml() {
 The main module exports:
 
 - `renderTemplate(templatePath, options)` - Core rendering function that returns XML representation
-- `renderers.asciiArt.render(templatePath, options)` - Renders template as ASCII art
+- `renderers.asciiArt.render(templatePath, options)` - Renders template as ASCII art with options:
+  - `returnBuffer: boolean` - Return ASCII art as string instead of printing to console
+  - `border: boolean` - Add border around diagram with stack name
+  - `ci: boolean` - CI mode (no cursor control, full output at once)
+  - `title: string` - Custom title for outer border (useful with side-by-side rendering)
+  - `sideBySide: boolean` - Enable side-by-side rendering of multiple templates (comma-separated paths)
+  - `spacing: number` - Space between diagrams in side-by-side mode (default: 2)
 - `renderers.drawio`, `renderers.html`, `renderers.mermaid` - Other renderers (to be implemented)
 - `utils.templateParser` and `utils.mxGenerator` - Lower-level utilities
 
@@ -161,6 +192,7 @@ Options:
   --border                              Add a border with stack name around the diagram
   --side-by-side                        Render multiple templates side-by-side
   --spacing [spacing]                    Number of spaces between stacks when rendering side-by-side (default: "4")
+  --title [title]                        Custom title for the outer border when rendering multiple diagrams
   -h, --help                             display help for command
 ```
 
@@ -212,6 +244,12 @@ You can also adjust the spacing between stacks using the `--spacing` option (def
 
 ```
 cfn-dia ascii-art -t template1.yaml,template2.yaml --side-by-side --ci --spacing 8
+```
+
+You can also add a custom title to the outer border that surrounds the entire side-by-side diagram:
+
+```
+cfn-dia ascii-art -t template1.yaml,template2.yaml --side-by-side --ci --border --title "Production vs Staging Comparison"
 ```
 
 This feature is particularly useful for:
