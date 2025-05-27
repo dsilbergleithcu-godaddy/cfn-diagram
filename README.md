@@ -7,6 +7,8 @@ CLI tool to visualise CloudFormation/SAM/CDK templates as diagrams.
 `npm i -g @mhlabs/cfn-diagram`
 
 ## Usage
+
+### Command Line Interface
 ```
 Usage: cfn-dia [options] [command]
 
@@ -18,6 +20,8 @@ Commands:
   draw.io|d [options]                 Generates a draw.io diagram from a CloudFormation template
   html|h [options]                    Generates a vis.js diagram from a CloudFormation template
   browse|b [options]                  Browses and generates diagrams from your deployed templates
+  ascii-art|a [options]               Generates an ascii-art diagram from a CloudFormation template
+  mermaid|m [options]                 Generates a mermaid graph from a template
   help [command]                      Display help for command
 
 Draw.io Options:
@@ -35,6 +39,39 @@ Html Options:
   -co, --cdk-output [outputPath]      CDK synth output path
   -s, --skip-synth                    Skips CDK synth
 ```
+
+### Programmatic Usage
+You can also use cfn-diagram as an imported module in your Node.js applications:
+
+```javascript
+const cfnDiagram = require('@mhlabs/cfn-diagram');
+
+// Example: Render a CloudFormation template as ASCII art
+async function renderTemplate() {
+  const asciiOutput = await cfnDiagram.renderers.asciiArt.render('path/to/template.yaml', {
+    returnBuffer: true,  // Return the ASCII art as a string
+    border: true,        // Add a border with stack name
+    ci: true             // CI mode (no cursor control)
+  });
+  
+  console.log(asciiOutput);
+}
+
+// Example: Get raw XML representation
+async function getRawXml() {
+  const xmlOutput = await cfnDiagram.renderTemplate('path/to/template.yaml');
+  console.log(`XML generated (length: ${xmlOutput.length} characters)`);
+}
+```
+
+The main module exports:
+
+- `renderTemplate(templatePath, options)` - Core rendering function that returns XML representation
+- `renderers.asciiArt.render(templatePath, options)` - Renders template as ASCII art
+- `renderers.drawio`, `renderers.html`, `renderers.mermaid` - Other renderers (to be implemented)
+- `utils.templateParser` and `utils.mxGenerator` - Lower-level utilities
+
+See the [examples directory](./examples/programmatic-usage.js) for more detailed examples.
 
 ## Output formats
 
